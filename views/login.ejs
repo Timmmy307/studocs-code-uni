@@ -1,0 +1,20 @@
+<% layout('layout') -%>
+<section class="auth">
+  <h1>Login</h1>
+  <% if (error) { %>
+    <p class="error"><%= error %></p>
+  <% } %>
+  <form method="post" action="/auth/login" data-ban-aware="true">
+    <input type="hidden" name="next" value="<%= next || '/' %>" />
+    <input type="hidden" name="client_banned" value="false" />
+    <input type="hidden" name="client_ban_reason" value="" />
+    <label>Email or Username
+      <input type="text" name="email" required />
+    </label>
+    <label>Password
+      <input type="password" name="password" required />
+    </label>
+    <button type="submit">Login</button>
+    <p>New here? <a href="/auth/register">Register</a></p>
+  </form>
+</section>

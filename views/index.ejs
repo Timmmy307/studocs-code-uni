@@ -1,0 +1,43 @@
+<% layout('layout') -%>
+<section class="hero">
+  <h1>Find course documents faster</h1>
+  <p class="muted">Search by PDF title and school. Uploads are moderated. Everything is free for signed-in users.</p>
+</section>
+
+<section>
+  <h2>Leaderboard</h2>
+  <% if (!leaders || leaders.length === 0) { %>
+    <p>No users yet.</p>
+  <% } else { %>
+    <ol class="leaderboard">
+      <% leaders.forEach(function(l){ %>
+        <li><span class="name"><%= l.email %></span><span class="points"><%= l.points %> pts</span></li>
+      <% }) %>
+    </ol>
+  <% } %>
+</section>
+
+<section>
+  <h2>Recent Documents</h2>
+  <% if (!docs || docs.length === 0) { %>
+    <p>No documents found.</p>
+  <% } else { %>
+    <ul class="doc-list">
+      <% docs.forEach(function(doc) { %>
+        <li class="doc-item">
+          <h3><a href="/docs/<%= doc.id %>"><%= doc.title %></a></h3>
+          <p class="meta">
+            <strong>School:</strong> <%= doc.school || '—' %>
+            <% if (doc.grade_level) { %> | <strong>Grade:</strong> <%= doc.grade_level %><% } %>
+            <% if (doc.course) { %> | <strong>Course:</strong> <%= doc.course %><% } %>
+            <% if (doc.tags) { %> | <strong>Tags:</strong> <%= doc.tags %><% } %>
+          </p>
+          <% if (doc.uploader_status === 'banned') { %>
+            <p class="badge badge-warn">Uploader is banned</p>
+          <% } %>
+          <p class="time"><%= new Date(doc.created_at).toLocaleString() %></p>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</section>

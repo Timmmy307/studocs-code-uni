@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title %><% if (typeof page !== 'undefined' && page) { %> — <%= page %><% } %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/public/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a href="/" class="brand">Firewall Freedom Docs</a>
+    <nav>
+      <form class="search" action="/" method="get">
+        <input name="q" type="search" placeholder="Search by PDF title" value="<%= typeof query !== 'undefined' ? query : '' %>" />
+        <input name="school" list="school-list" type="search" placeholder="School" value="<%= typeof school !== 'undefined' ? school : '' %>" />
+        <datalist id="school-list">
+          <option value="Harvard University"></option>
+          <option value="MIT"></option>
+          <option value="Stanford University"></option>
+          <option value="UC Berkeley"></option>
+          <option value="UCLA"></option>
+          <option value="University of Texas"></option>
+          <option value="University of Michigan"></option>
+          <option value="High School A"></option>
+          <option value="High School B"></option>
+        </datalist>
+        <button type="submit" title="Search">Search</button>
+      </form>
+      <ul>
+        <% if (currentUser) { %>
+          <% if (currentUser.is_admin) { %>
+            <li><a href="/admin/verify">Verify</a></li>
+          <% } %>
+          <li><a href="/docs/upload">Upload</a></li>
+          <li class="user">Signed in as <%= currentUser.email %> (<%= currentUser.points %> pts)</li>
+          <li>
+            <form action="/auth/logout" method="post">
+              <button type="submit" class="linklike">Logout</button>
+            </form>
+          </li>
+        <% } else { %>
+          <li><a href="/auth/login">Login</a></li>
+          <li><a href="/auth/register">Register</a></li>
+        <% } %>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <%- body %>
+  </main>
+
+  <footer class="site-footer">
+    <p><%= branding %></p>
+    <p class="legal">Upload only content you have rights to share. Respect copyrights and laws.</p>
+  </footer>
+
+  <script>
+    (function(){
+      var serverBanned = <%= JSON.stringify(serverBanned || false) %>;
+      var serverBanReason = <%= JSON.stringify(serverBanReason || '') %>;
+      if (serverBanned) {
+        try {
+          localStorage.setItem('userbanned', 'true');
+          localStorage.setItem('reasonforbanned', serverBanReason);
+          localStorage.setItem('ressonforbanned', serverBanReason);
+        } catch (e) {}
+      }
+    })();
+  </script>
+  <script src="/public/main.js"></script>
+</body>
+</html>

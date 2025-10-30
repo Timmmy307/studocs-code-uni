@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Firewall Freedom Docs — Admin Verification</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="admin">
+  <header class="site-header">
+    <a href="/" class="brand">Firewall Freedom Docs</a>
+    <nav>
+      <ul id="nav-auth-links">
+        <li id="upload-link" style="display:none;"><a href="/upload">Upload</a></li>
+        <li><a href="/admin" id="admin-link" style="display:none;">Verify</a></li>
+        <li><a href="/settings" id="settings-link" style="display:none;">Settings</a></li>
+        <li id="nav-user-info" style="display:none;">Signed in as <span id="nav-user-identity"></span> (<span id="nav-user-points"></span> pts)</li>
+        <li id="nav-login-links">
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+        </li>
+        <li id="nav-logout" style="display:none;">
+          <button id="logout-btn" class="linklike">Logout</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    <section>
+      <h1>Verification Dashboard</h1>
+      <p id="admin-error" class="error" style="display:none;"></p>
+      <div id="admin-gate" class="card" style="display:none;">
+        <p>Admins only. Please log in as admin.</p>
+        <p><a class="button" href="/login">Go to login</a></p>
+      </div>
+
+      <div id="verify-card" class="verify-card card" style="display:none;">
+        <h2 id="doc-title"></h2>
+        <p class="meta" id="doc-meta-1"></p>
+        <p class="meta" id="doc-meta-2"></p>
+        <p id="doc-desc"></p>
+        <div class="pdf-viewer">
+          <iframe id="doc-iframe" width="100%" height="600" style="border:0;"></iframe>
+        </div>
+        <div style="margin-top:12px;">
+          <button id="approve-btn" class="button">Approve (+5 pts)</button>
+          <button id="deny-btn" class="button secondary">Deny</button>
+        </div>
+        <details class="ban-box" style="margin-top:12px;">
+          <summary>Block uploader</summary>
+          <label>Reason
+            <input type="text" id="ban-reason" placeholder="Reason for ban" />
+          </label>
+          <button id="ban-btn" class="button danger" style="margin-top:8px;">Block user</button>
+        </details>
+      </div>
+
+      <div id="no-pending" class="card" style="display:none;">
+        <p>No pending documents. Great job!</p>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <p id="branding">Made by Firewall Freedom</p>
+  </footer>
+  <div class="ban-overlay" id="ban-overlay"><div class="inner"><h1>You have been banned</h1><p class="reason"></p></div></div>
+  <button class="unban-button" id="unban-btn" title=""></button>
+  <script src="/main.js"></script>
+</body>
+</html>

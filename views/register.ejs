@@ -1,0 +1,21 @@
+<% layout('layout') -%>
+<section class="auth">
+  <h1>Register</h1>
+  <% if (error) { %>
+    <p class="error"><%= error %></p>
+  <% } %>
+  <form method="post" action="/auth/register" data-ban-aware="true">
+    <input type="hidden" name="client_banned" value="false" />
+    <input type="hidden" name="client_ban_reason" value="" />
+    <label>Email
+      <input type="email" name="email" required />
+    </label>
+    <label>Password
+      <input type="password" name="password" minlength="8" required />
+    </label>
+    <label>Confirm Password
+      <input type="password" name="confirm" minlength="8" required />
+    </label>
+    <button type="submit">Create Account</button>
+  </form>
+</section>

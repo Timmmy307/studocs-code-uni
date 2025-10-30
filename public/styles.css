@@ -1,0 +1,128 @@
+:root {
+  --fg: #111827;
+  --bg: #ffffff;
+  --muted: #6b7280;
+  --brand: #0ea5e9; /* sky-500 */
+  --brand-600: #0284c7;
+  --border: #e5e7eb;
+  --error: #b91c1c;
+  --info: #2563eb;
+  --warn: #92400e;
+  --card: #ffffff;
+  --shadow: 0 1px 2px rgba(0,0,0,0.05), 0 6px 24px rgba(0,0,0,0.06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: var(--fg);
+  background: var(--bg);
+}
+
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+.site-header {
+  position: sticky; top: 0; background: rgba(255,255,255,0.9); backdrop-filter: saturate(180%) blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 10;
+}
+.brand { font-weight: 800; color: var(--brand); margin-right: auto; letter-spacing: -0.02em; }
+
+nav { display: flex; align-items: center; gap: 16px; }
+nav ul { list-style: none; display: flex; gap: 12px; margin: 0; padding: 0; align-items: center; }
+.linklike { border: none; background: none; color: var(--brand); cursor: pointer; padding: 0; }
+
+.search { display: flex; gap: 8px; align-items: center; }
+.search input, .search select { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; }
+.search button {
+  padding: 10px 14px; border: 1px solid var(--brand); border-radius: 10px;
+  background: var(--brand); color: #fff; cursor: pointer; font-weight: 600;
+}
+.search button:hover { background: var(--brand-600); }
+
+h1, h2, h3 { margin: 16px 0; letter-spacing: -0.01em; }
+
+.hero { margin-top: 12px; padding: 16px 0 0 0; }
+.muted { color: var(--muted); }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
+
+.doc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; padding: 0; }
+.doc-item { list-style: none; border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); background: var(--card); }
+
+.meta { color: var(--muted); font-size: 0.95rem; }
+.time { color: var(--muted); font-size: 0.85rem; }
+
+form { display: grid; gap: 12px; max-width: 720px; }
+label { display: grid; gap: 6px; font-weight: 600; }
+input[type="text"], input[type="email"], input[type="password"], input[type="search"], input[type="number"], textarea, select {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: 100%;
+  font-size: 1rem;
+}
+button, .button {
+  display: inline-block;
+  padding: 10px 14px;
+  border: 1px solid var(--brand);
+  border-radius: 10px;
+  background: var(--brand);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}
+button:hover, .button:hover { background: var(--brand-600); text-decoration: none; }
+
+.button.secondary {
+  background: transparent;
+  color: var(--brand);
+}
+.button.danger {
+  background: var(--error);
+  border-color: var(--error);
+}
+
+.badge { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 0.8rem; }
+.badge-info { background: #dbeafe; color: var(--info); border: 1px solid #bfdbfe; }
+.badge-warn { background: #fef3c7; color: var(--warn); border: 1px solid #fde68a; }
+
+.site-footer {
+  margin-top: 32px;
+  border-top: 1px solid var(--border);
+  padding: 16px;
+  text-align: center;
+  color: var(--muted);
+}
+.small { font-size: 0.9rem; }
+.legal { margin: 8px 0 0 0; }
+
+/* Admin */
+.verify-card { border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); background: var(--card); }
+
+/* Ban overlay */
+.ban-overlay {
+  position: fixed; inset: 0; background: rgba(185, 28, 28, 0.95);
+  color: #fff; z-index: 99999; display: none; align-items: center; justify-content: center;
+  text-align: center; padding: 20px;
+}
+.ban-overlay.visible { display: flex; }
+.ban-overlay .inner h1 { font-size: 2rem; margin-bottom: 12px; }
+.ban-overlay .inner p { font-size: 1.1rem; }
+
+/* Invisible unban button */
+.unban-button {
+  position: fixed; right: 8px; bottom: 8px; z-index: 100000;
+  background: transparent; color: transparent; border: none; width: 64px; height: 32px; cursor: pointer;
+  opacity: 0.05;
+}
+.unban-button:focus { outline: none; }

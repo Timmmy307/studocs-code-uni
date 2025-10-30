@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Firewall Freedom Docs — Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="home">
+  <header class="site-header">
+    <a href="/" class="brand">Firewall Freedom Docs</a>
+    <nav>
+      <form id="search-form" class="search">
+        <input name="q" id="q" type="search" placeholder="Search by PDF title" />
+        <input name="school" id="school" list="school-list" type="search" placeholder="School" />
+        <datalist id="school-list">
+          <option value="Harvard University"></option>
+          <option value="MIT"></option>
+          <option value="Stanford University"></option>
+          <option value="UC Berkeley"></option>
+          <option value="UCLA"></option>
+          <option value="University of Texas"></option>
+          <option value="University of Michigan"></option>
+          <option value="High School A"></option>
+          <option value="High School B"></option>
+        </datalist>
+        <button type="submit" title="Search">Search</button>
+      </form>
+      <ul id="nav-auth-links">
+        <li id="upload-link" style="display:none;"><a href="/upload">Upload</a></li>
+        <li><a href="/admin" id="admin-link" style="display:none;">Verify</a></li>
+        <li><a href="/settings" id="settings-link" style="display:none;">Settings</a></li>
+        <li id="nav-user-info" style="display:none;">Signed in as <span id="nav-user-identity"></span> (<span id="nav-user-points"></span> pts)</li>
+        <li id="nav-login-links">
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+        </li>
+        <li id="nav-logout" style="display:none;">
+          <button id="logout-btn" class="linklike">Logout</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Find course documents faster</h1>
+      <p class="muted">Search by PDF title and school. Uploads are moderated. Everything is free for signed-in users.</p>
+    </section>
+
+    <section>
+      <h2>Leaderboard</h2>
+      <ol class="leaderboard" id="leaderboard"></ol>
+    </section>
+
+    <section>
+      <h2>Recent Documents</h2>
+      <ul class="doc-list" id="docs-list"></ul>
+      <p id="no-docs" style="display:none;">No documents found.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p id="branding">Made by Firewall Freedom</p>
+    <p class="legal">Upload only content you have rights to share. Respect copyrights and laws.</p>
+  </footer>
+
+  <div class="ban-overlay" id="ban-overlay"><div class="inner"><h1>You have been banned</h1><p class="reason"></p></div></div>
+  <button class="unban-button" id="unban-btn" title=""></button>
+  <script src="/main.js"></script>
+</body>
+</html>

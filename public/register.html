@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Firewall Freedom Docs — Register</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="register">
+  <header class="site-header">
+    <a href="/" class="brand">Firewall Freedom Docs</a>
+    <nav>
+      <ul id="nav-auth-links">
+        <li id="upload-link" style="display:none;"><a href="/upload">Upload</a></li>
+        <li><a href="/admin" id="admin-link" style="display:none;">Verify</a></li>
+        <li><a href="/settings" id="settings-link" style="display:none;">Settings</a></li>
+        <li id="nav-user-info" style="display:none;">Signed in as <span id="nav-user-identity"></span> (<span id="nav-user-points"></span> pts)</li>
+        <li id="nav-login-links">
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+        </li>
+        <li id="nav-logout" style="display:none;">
+          <button id="logout-btn" class="linklike">Logout</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    <section class="auth card">
+      <h1>Register</h1>
+      <p id="error" class="error" style="display:none;"></p>
+      <form id="register-form" data-ban-aware="true">
+        <label>Email
+          <input type="email" name="email" required />
+        </label>
+        <label>Username (optional)
+          <input type="text" name="username" placeholder="Leave blank to use your email as username" />
+        </label>
+        <label>Password
+          <input type="password" name="password" minlength="8" required />
+        </label>
+        <label>Confirm Password
+          <input type="password" name="confirm" minlength="8" required />
+        </label>
+        <button type="submit">Create Account</button>
+      </form>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <p id="branding">Made by Firewall Freedom</p>
+  </footer>
+  <div class="ban-overlay" id="ban-overlay"><div class="inner"><h1>You have been banned</h1><p class="reason"></p></div></div>
+  <button class="unban-button" id="unban-btn" title=""></button>
+  <script src="/main.js"></script>
+</body>
+</html>

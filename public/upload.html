@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Firewall Freedom Docs — Upload</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="upload">
+  <header class="site-header">
+    <a href="/" class="brand">Firewall Freedom Docs</a>
+    <nav>
+      <ul id="nav-auth-links">
+        <li id="upload-link" style="display:none;"><a href="/upload">Upload</a></li>
+        <li><a href="/admin" id="admin-link" style="display:none;">Verify</a></li>
+        <li><a href="/settings" id="settings-link" style="display:none;">Settings</a></li>
+        <li id="nav-user-info" style="display:none;">Signed in as <span id="nav-user-identity"></span> (<span id="nav-user-points"></span> pts)</li>
+        <li id="nav-login-links">
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+        </li>
+        <li id="nav-logout" style="display:none;">
+          <button id="logout-btn" class="linklike">Logout</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+  <main class="container">
+    <section>
+      <h1>Upload PDF(s)</h1>
+      <p class="muted">Set a clear title (optional for batch), select your school and grade level. Uploads go to admin review before becoming visible.</p>
+      <p id="error" class="error" style="display:none;"></p>
+      <form id="upload-form" class="card" enctype="multipart/form-data">
+        <label>PDF Title (optional; used if single file or applied to all)
+          <input type="text" name="title" placeholder="e.g., Calculus Midterm Solutions (Fall 2024)" />
+        </label>
+
+        <label>School
+          <input type="text" name="school" list="school-list" placeholder="Type your school" required />
+          <datalist id="school-list">
+            <option value="Harvard University"></option>
+            <option value="MIT"></option>
+            <option value="Stanford University"></option>
+            <option value="UC Berkeley"></option>
+            <option value="UCLA"></option>
+            <option value="University of Texas"></option>
+            <option value="University of Michigan"></option>
+            <option value="High School A"></option>
+            <option value="High School B"></option>
+          </datalist>
+        </label>
+
+        <label>Grade Level
+          <select name="grade_level" required>
+            <option value="" disabled selected>Select grade</option>
+            <script>
+              for (let i = 1; i <= 14; i++) {
+                document.write('<option value="'+i+'">'+i+'</option>');
+              }
+            </script>
+            <option value="College">College</option>
+          </select>
+        </label>
+
+        <label>Course (optional)
+          <input type="text" name="course" placeholder="e.g., MATH 101" />
+        </label>
+
+        <label>Tags (optional, comma separated)
+          <input type="text" name="tags" placeholder="e.g., midterm, solutions, calculus" />
+        </label>
+
+        <label>Description (optional)
+          <textarea name="description" rows="4" placeholder="Brief description to help others find this document"></textarea>
+        </label>
+
+        <label>PDF File(s)
+          <input type="file" name="pdfs" id="pdfs" accept="application/pdf" multiple required />
+        </label>
+
+        <button type="submit">Upload (goes to review)</button>
+      </form>
+      <p class="legal small">By uploading, you confirm you have the rights to share these files.</p>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <p id="branding">Made by Firewall Freedom</p>
+  </footer>
+  <div class="ban-overlay" id="ban-overlay"><div class="inner"><h1>You have been banned</h1><p class="reason"></p></div></div>
+  <button class="unban-button" id="unban-btn" title=""></button>
+  <script src="/main.js"></script>
+</body>
+</html>

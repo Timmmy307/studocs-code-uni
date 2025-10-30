@@ -1,0 +1,34 @@
+<% layout('layout') -%>
+<section class="doc-view">
+  <h1><%= doc.title %></h1>
+  <p class="meta">
+    <strong>School:</strong> <%= doc.school || '—' %> |
+    <strong>Grade:</strong> <%= doc.grade_level || '—' %> |
+    <strong>Course:</strong> <%= doc.course || '—' %> |
+    <strong>Tags:</strong> <%= doc.tags || '—' %> |
+    <strong>Uploaded:</strong> <%= new Date(doc.created_at).toLocaleString() %>
+  </p>
+
+  <% if (doc.uploader_status === 'banned') { %>
+    <p class="badge badge-warn">Uploader is banned</p>
+    <% if (doc.uploader_banned_at && new Date(doc.created_at) > new Date(doc.uploader_banned_at)) { %>
+      <p class="badge badge-warn">This was uploaded while the uploader was banned</p>
+    <% } %>
+  <% } %>
+
+  <% if (doc.description) { %>
+    <p><%= doc.description %></p>
+  <% } %>
+
+  <% if (doc.status !== 'approved') { %>
+    <p class="badge badge-info">Status: <%= doc.status %></p>
+  <% } %>
+
+  <div class="pdf-viewer card">
+    <iframe src="/docs/<%= doc.id %>/view" width="100%" height="800" style="border:0;"></iframe>
+  </div>
+
+  <p>
+    <a class="button" href="/docs/<%= doc.id %>/download">Download PDF</a>
+  </p>
+</section>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Firewall Freedom Docs — Document</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="document">
+  <header class="site-header">
+    <a href="/" class="brand">Firewall Freedom Docs</a>
+    <nav>
+      <ul id="nav-auth-links">
+        <li id="upload-link" style="display:none;"><a href="/upload">Upload</a></li>
+        <li><a href="/admin" id="admin-link" style="display:none;">Verify</a></li>
+        <li><a href="/settings" id="settings-link" style="display:none;">Settings</a></li>
+        <li id="nav-user-info" style="display:none;">Signed in as <span id="nav-user-identity"></span> (<span id="nav-user-points"></span> pts)</li>
+        <li id="nav-login-links">
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+        </li>
+        <li id="nav-logout" style="display:none;">
+          <button id="logout-btn" class="linklike">Logout</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="doc-view card">
+      <h1 id="doc-title">Document</h1>
+      <p class="meta" id="doc-meta"></p>
+      <p id="doc-desc"></p>
+      <p id="doc-badges"></p>
+      <div class="pdf-viewer card" style="padding:0;">
+        <iframe id="doc-iframe" width="100%" height="800" style="border:0;"></iframe>
+      </div>
+      <p style="margin-top:12px;">
+        <a class="button" id="download-link" href="#" download>Download PDF</a>
+      </p>
+      <p id="doc-error" class="error" style="display:none;"></p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p id="branding">Made by Firewall Freedom</p>
+  </footer>
+  <div class="ban-overlay" id="ban-overlay"><div class="inner"><h1>You have been banned</h1><p class="reason"></p></div></div>
+  <button class="unban-button" id="unban-btn" title=""></button>
+  <script src="/main.js"></script>
+</body>
+</html>

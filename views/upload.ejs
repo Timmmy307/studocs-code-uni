@@ -1,0 +1,57 @@
+<% layout('layout') -%>
+<section>
+  <h1>Upload a PDF</h1>
+  <p class="muted">Set a clear title, select your school and grade level. Uploads go to admin review before becoming visible.</p>
+  <% if (error) { %>
+    <p class="error"><%= error %></p>
+  <% } %>
+  <form class="card" method="post" action="/docs/upload" enctype="multipart/form-data">
+    <label>PDF Title
+      <input type="text" name="title" placeholder="e.g., Calculus Midterm Solutions (Fall 2024)" required />
+    </label>
+
+    <label>School
+      <input type="text" name="school" list="school-list" placeholder="Type your school" required />
+      <datalist id="school-list">
+        <option value="Harvard University"></option>
+        <option value="MIT"></option>
+        <option value="Stanford University"></option>
+        <option value="UC Berkeley"></option>
+        <option value="UCLA"></option>
+        <option value="University of Texas"></option>
+        <option value="University of Michigan"></option>
+        <option value="High School A"></option>
+        <option value="High School B"></option>
+      </datalist>
+    </label>
+
+    <label>Grade Level
+      <select name="grade_level" required>
+        <option value="" disabled selected>Select grade</option>
+        <% for (let i = 1; i <= 14; i++) { %>
+          <option value="<%= i %>"><%= i %></option>
+        <% } %>
+        <option value="College">College</option>
+      </select>
+    </label>
+
+    <label>Course (optional)
+      <input type="text" name="course" placeholder="e.g., MATH 101" />
+    </label>
+
+    <label>Tags (optional, comma separated)
+      <input type="text" name="tags" placeholder="e.g., midterm, solutions, calculus" />
+    </label>
+
+    <label>Description (optional)
+      <textarea name="description" rows="4" placeholder="Brief description to help others find this document"></textarea>
+    </label>
+
+    <label>PDF File
+      <input type="file" name="pdf" accept="application/pdf" required />
+    </label>
+
+    <button type="submit">Upload (goes to review)</button>
+  </form>
+  <p class="legal small">By uploading, you confirm you have the rights to share this file.</p>
+</section>

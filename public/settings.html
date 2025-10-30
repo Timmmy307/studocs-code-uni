@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Firewall Freedom Docs — Settings</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="settings">
+  <header class="site-header">
+    <a href="/" class="brand">Firewall Freedom Docs</a>
+    <nav>
+      <ul id="nav-auth-links">
+        <li id="upload-link" style="display:none;"><a href="/upload">Upload</a></li>
+        <li><a href="/admin" id="admin-link" style="display:none;">Verify</a></li>
+        <li><a href="/settings" id="settings-link" style="display:none;">Settings</a></li>
+        <li id="nav-user-info" style="display:none;">Signed in as <span id="nav-user-identity"></span> (<span id="nav-user-points"></span> pts)</li>
+        <li id="nav-login-links">
+          <a href="/login">Login</a>
+          <a href="/register">Register</a>
+        </li>
+        <li id="nav-logout" style="display:none;">
+          <button id="logout-btn" class="linklike">Logout</button>
+        </li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h1>Account Settings</h1>
+      <p class="muted">Update your username or delete your account.</p>
+
+      <div id="settings-gate" class="card" style="display:none;">
+        <p>You must be signed in to access Settings.</p>
+        <p><a class="button" href="/login">Go to login</a></p>
+      </div>
+
+      <div id="settings-form-wrap">
+        <h2>Profile</h2>
+        <div style="display:grid; gap:10px; max-width:560px;">
+          <label>Email (read-only)
+            <input type="email" id="settings-email" readonly />
+          </label>
+          <label>Username
+            <input type="text" id="settings-username" placeholder="Your username" />
+          </label>
+          <div>
+            <button id="save-username-btn" class="button">Save Username</button>
+            <span id="settings-msg" class="muted" style="margin-left:8px;"></span>
+          </div>
+        </div>
+
+        <h2 style="margin-top:24px;">Danger Zone</h2>
+        <p class="muted">Deleting your account will move all your PDFs to the banned-pdfs area and remove your account.</p>
+        <button id="delete-account-btn" class="button danger">Delete Account</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p id="branding">Made by Firewall Freedom</p>
+  </footer>
+  <div class="ban-overlay" id="ban-overlay"><div class="inner"><h1>You have been banned</h1><p class="reason"></p></div></div>
+  <button class="unban-button" id="unban-btn" title=""></button>
+  <script src="/main.js"></script>
+</body>
+</html>

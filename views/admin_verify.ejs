@@ -1,0 +1,46 @@
+<% layout('layout') -%>
+<section>
+  <h1>Verification Dashboard</h1>
+  <% if (error) { %><p class="error"><%= error %></p><% } %>
+  <% if (!doc) { %>
+    <p>No pending documents. Great job!</p>
+  <% } else { %>
+    <article class="verify-card card">
+      <h2><%= doc.title %></h2>
+      <p class="meta">
+        <strong>Uploader:</strong> <%= doc.uploader_email || 'Unknown' %>
+        <% if (doc.uploader_status === 'banned') { %><span class="badge badge-warn">Uploader banned</span><% } %>
+      </p>
+      <p class="meta">
+        <strong>School:</strong> <%= doc.school || '—' %> |
+        <strong>Grade:</strong> <%= doc.grade_level || '—' %> |
+        <strong>Course:</strong> <%= doc.course || '—' %>
+      </p>
+      <% if (doc.description) { %><p><%= doc.description %></p><% } %>
+      <div class="pdf-viewer">
+        <iframe src="/docs/<%= doc.id %>/view" width="100%" height="600" style="border:0;"></iframe>
+      </div>
+
+      <form method="post" action="/admin/approve" class="inline">
+        <input type="hidden" name="doc_id" value="<%= doc.id %>"/>
+        <input type="hidden" name="uploader_id" value="<%= doc.uploaded_by %>"/>
+        <button class="button" type="submit">Approve (+5 pts)</button>
+      </form>
+      <form method="post" action="/admin/deny" class="inline">
+        <input type="hidden" name="doc_id" value="<%= doc.id %>"/>
+        <button class="button secondary" type="submit">Deny</button>
+      </form>
+
+      <details class="ban-box">
+        <summary>Block uploader</summary>
+        <form method="post" action="/admin/block-user">
+          <input type="hidden" name="uploader_id" value="<%= doc.uploaded_by %>"/>
+          <label>Reason
+            <input type="text" name="reason" placeholder="Reason for ban" />
+          </label>
+          <button class="button danger" type="submit">Block user</button>
+        </form>
+      </details>
+    </article>
+  <% } %>
+</section>
