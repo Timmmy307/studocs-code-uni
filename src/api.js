@@ -1,3 +1,16 @@
+/**
+ * src/api.js
+ *
+ * Full file — JSON API for the static frontend.
+ * - Keeps authentication, uploads, moderation, settings, search, and document endpoints.
+ * - Updated search endpoint: returns documents that are:
+ *     - approved, OR
+ *     - uploaded by the current signed-in user, OR
+ *     - if the current user is admin, include all documents.
+ *
+ * This makes search show a user's own uploads even while pending, while keeping public results limited to approved items.
+ */
+
 const express = require('express');
 const multer = require('multer');
 const mime = require('mime-types');
@@ -65,6 +78,7 @@ router.post('/auth/register', async (req, res) => {
     if (finalUsername && !isValidUsername(finalUsername)) {
       throw new Error('Invalid username. Use 3–30 chars: letters, numbers, _, ., -');
     }
+    // If blank, default will be email inside registerUser
     const u = await registerUser(
       String(email).trim().toLowerCase(),
       password,
@@ -155,23 +169,70 @@ router.get('/leaderboard', (req, res) => {
   res.json({ ok: true, leaders: leaderStmt.all() });
 });
 
-// Search/list docs
-const searchStmt = db.prepare(`
-SELECT d.id, d.title, d.course, d.school, d.grade_level, d.tags, d.created_at, u.status as uploader_status
+// SEARCH / LIST docs
+// Updated: returns docs that are either approved OR belong to the current user OR (if admin) all docs.
+// Supports q (title LIKE) and school filters; those filters apply on top of visibility rules.
+router.get('/docs/search', async (req, res) => {
+  try {
+    const qRaw = (req.query.q || '').toString().trim();
+    const schoolRaw = (req.query.school || '').toString().trim();
+
+    // Prepare wildcard patterns
+    const qLike = qRaw ? `%${qRaw}%` : null;
+    const schoolLike = schoolRaw ? `%${schoolRaw}%` : null;
+
+    const currentUser = me(req);
+    const userId = currentUser ? currentUser.id : null;
+    const isAdmin = currentUser && currentUser.is_admin;
+
+    // Build SQL dynamically to incorporate visibility rules safely
+    // We select documents where:
+    // - (d.status = 'approved') OR (d.uploaded_by = :userId) OR (isAdmin -> include all)
+    // Then apply the optional title/school filters.
+
+    // Note: If user is admin, we don't restrict by status or owner.
+    let sql = `
+SELECT d.id, d.title, d.course, d.school, d.grade_level, d.tags, d.created_at, d.status,
+       u.status as uploader_status
 FROM documents d
 LEFT JOIN users u ON u.id = d.uploaded_by
-WHERE
-  d.status = 'approved' AND
-  (COALESCE(@q, '') = '' OR d.title LIKE @q) AND
-  (COALESCE(@school, '') = '' OR d.school LIKE @school)
-ORDER BY datetime(d.created_at) DESC
-LIMIT 100
-`);
-router.get('/docs/search', (req, res) => {
-  const q = (req.query.q || '').toString().trim();
-  const school = (req.query.school || '').toString().trim();
-  const docs = searchStmt.all({ q: q ? `%${q}%` : '', school: school ? `%${school}%` : '' });
-  res.json({ ok: true, docs });
+WHERE 1=1
+`;
+
+    const params = {};
+
+    // Visibility clause
+    if (!isAdmin) {
+      sql += ` AND (d.status = 'approved'`;
+      if (userId) {
+        sql += ` OR d.uploaded_by = @userId`;
+        params.userId = userId;
+      }
+      sql += `)`;
+    } // if admin -> no additional visibility filter
+
+    // Title filter
+    if (qLike) {
+      sql += ` AND d.title LIKE @q`;
+      params.q = qLike;
+    }
+
+    // School filter
+    if (schoolLike) {
+      sql += ` AND d.school LIKE @school`;
+      params.school = schoolLike;
+    }
+
+    sql += ` ORDER BY datetime(d.created_at) DESC LIMIT 200`;
+
+    const stmt = db.prepare(sql);
+    const docs = stmt.all(params);
+
+    res.json({ ok: true, docs });
+  } catch (e) {
+    console.error('Search error', e);
+    res.status(500).json({ ok: false, error: e.message || 'Search failed' });
+  }
 });
 
 // Upload single doc (pending by default)
