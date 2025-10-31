@@ -1,132 +1,84 @@
-const fs = require('fs');
-const path = require('path');
-const { octokit, GH_OWNER, GH_REPO, GH_BRANCH, configError } = require('./githubClient');
+// Lightweight helper for syncing a file to GitHub (create or update as needed)
+// Replace or adapt this to fit into your existing codebase.
 
-const LOCAL_DB_PATH = process.env.DATABASE_URL || './data/app.db';
-const REMOTE_DB_PATH = 'data/app.db';
+import { Octokit } from "@octokit/rest";
 
-let lastKnownSha = null;
-let dirty = false;
-let timer = null;
+/**
+ * Sync a file to a GitHub repo path (create or update).
+ *
+ * @param {Object} options
+ * @param {string} options.token - GitHub token with repo permissions
+ * @param {string} options.owner - repo owner
+ * @param {string} options.repo - repo name
+ * @param {string} options.branch - branch name (eg "main")
+ * @param {string} options.path - file path in repo (eg "data/app.db")
+ * @param {string} options.contentBase64 - file content already base64 encoded
+ * @param {string} options.message - commit message
+ */
+export async function syncFileToGitHub({
+  token,
+  owner,
+  repo,
+  branch = "main",
+  path,
+  contentBase64,
+  message = "Sync file",
+}) {
+  if (!token) throw new Error("GitHub token is required");
+  if (!owner || !repo || !path || !contentBase64) {
+    throw new Error("owner, repo, path and contentBase64 are required");
+  }
 
-async function getRemoteSha() {
+  const octokit = new Octokit({ auth: token });
+
+  // Try to get the existing file to obtain the sha. If it doesn't exist (404) we will create it.
+  let sha;
   try {
-    const { data } = await octokit.repos.getContent({
-      owner: GH_OWNER,
-      repo: GH_REPO,
-      path: REMOTE_DB_PATH,
-      ref: GH_BRANCH
+    const getResp = await octokit.request("GET /repos/{owner}/{repo}/contents/{path}", {
+      owner,
+      repo,
+      path,
+      ref: branch, // check on the branch
     });
-    if (Array.isArray(data)) throw new Error('Expected file, found directory');
-    return data.sha || null;
-  } catch (e) {
-    if (e.status === 404) return null;
-    throw e;
-  }
-}
-
-async function fetchRemoteDbBuffer() {
-  const sha = await getRemoteSha();
-  if (!sha) return null;
-
-  const resp = await octokit.request('GET /repos/{owner}/{repo}/git/blobs/{file_sha}', {
-    owner: GH_OWNER,
-    repo: GH_REPO,
-    file_sha: sha,
-    headers: { accept: 'application/vnd.github.raw' }
-  });
-
-  const body = resp.data;
-  if (Buffer.isBuffer(body)) return { buf: body, sha };
-  if (typeof body === 'string') return { buf: Buffer.from(body, 'binary'), sha };
-  if (body && body.content && body.encoding === 'base64') return { buf: Buffer.from(body.content, 'base64'), sha };
-  throw new Error('Unable to fetch DB blob content');
-}
-
-async function initDataSync() {
-  // Try to pull remote DB
-  let remote = null;
-  try {
-    remote = await fetchRemoteDbBuffer();
-  } catch (e) {
-    if (e.status && e.status !== 404) throw e;
-  }
-
-  if (remote && remote.buf) {
-    const localDir = path.dirname(LOCAL_DB_PATH);
-    if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
-    fs.writeFileSync(LOCAL_DB_PATH, remote.buf);
-    lastKnownSha = remote.sha;
-    console.log('Pulled data/app.db from remote.');
-  } else {
-    const localDir = path.dirname(LOCAL_DB_PATH);
-    if (!fs.existsSync(localDir)) fs.mkdirSync(localDir, { recursive: true });
-    if (!fs.existsSync(LOCAL_DB_PATH)) {
-      fs.writeFileSync(LOCAL_DB_PATH, Buffer.alloc(0));
+    // If found, response data is an object with .sha
+    if (getResp && getResp.data && getResp.data.sha) {
+      sha = getResp.data.sha;
+      console.log(`[gitDataSync] Existing file found at ${path} (sha: ${sha}). Will update.`);
+    } else {
+      console.log(`[gitDataSync] GET returned without sha for ${path}; will create/update without sha.`);
     }
-    await syncNow(true);
-    console.log('Initialized remote data/app.db (created new file).');
-  }
-
-  setInterval(() => {
-    if (dirty) syncNow().catch(e => console.error('Periodic sync error:', e.message));
-  }, 60 * 1000).unref();
-
-  const shutdown = async () => {
-    if (dirty) {
-      try { await syncNow(true); } catch (e) { console.error('Final sync error:', e.message); }
+  } catch (err) {
+    // If file not found, we'll create it (no sha). Re-throw other errors.
+    if (err.status === 404) {
+      console.log(`[gitDataSync] File ${path} not found on branch ${branch}. Will create it.`);
+    } else {
+      // Log and rethrow unexpected errors
+      console.error("[gitDataSync] Error fetching file info:", err);
+      throw err;
     }
-    process.exit(0);
-  };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-}
-
-function markDataDirty() {
-  dirty = true;
-  if (timer) return;
-  timer = setTimeout(() => {
-    syncNow().catch(e => console.error('Sync error:', e.message));
-    timer = null;
-  }, 5000);
-}
-
-async function syncNow(force = false) {
-  if (!dirty && !force) return;
-
-  const buf = fs.readFileSync(LOCAL_DB_PATH);
-  const contentBase64 = buf.toString('base64');
-
-  if (!lastKnownSha && !force) {
-    lastKnownSha = await getRemoteSha();
   }
 
-  const params = {
-    owner: GH_OWNER,
-    repo: GH_REPO,
-    path: REMOTE_DB_PATH,
-    message: 'Sync data/app.db',
+  // Build request body for create/update. Include sha only when updating.
+  const putBody = {
+    owner,
+    repo,
+    path,
+    message,
     content: contentBase64,
-    branch: GH_BRANCH
+    branch,
   };
-  if (lastKnownSha) params.sha = lastKnownSha;
+  if (sha) putBody.sha = sha;
 
   try {
-    const { data } = await octokit.repos.createOrUpdateFileContents(params);
-    lastKnownSha = data.content.sha || null;
-    dirty = false;
-  } catch (e) {
-    if (e.status === 404) {
-      throw configError(
-        'Remote write failed with 404 (Not Found). Ensure the repository and branch exist and the token has contents:write.'
-      );
+    const putResp = await octokit.request("PUT /repos/{owner}/{repo}/contents/{path}", putBody);
+    console.log(`[gitDataSync] Successfully synced ${path} — commit: ${putResp.data && putResp.data.commit && putResp.data.commit.sha}`);
+    return putResp.data;
+  } catch (err) {
+    // Bubble up but add a more helpful message for the common sha-missing case
+    if (err.status === 422 && /sha/i.test(err.message || "")) {
+      console.error("[gitDataSync] 422 from GitHub: missing or invalid sha. If the file exists, make sure we fetched the current sha before PUT.");
     }
-    throw e;
+    console.error("[gitDataSync] PUT error:", err);
+    throw err;
   }
 }
-
-module.exports = {
-  initDataSync,
-  markDataDirty,
-  syncNow
-};
