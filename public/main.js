@@ -1,14 +1,20 @@
-// public/main.js
-// Full file — updates leaderboard rendering to show "Username | N pts"
+// Full file: public/main.js
+// This version changes document viewer behavior so PDFs are fetched as ArrayBuffer and shown using a Blob URL.
+// That avoids many viewer errors caused by direct iframe src to binary endpoints and lets us show a temporary
+// viewer page (via blob) that browsers handle more consistently. It also revokes blob URLs when navigating away.
 
 (function () {
   // Utilities
   function $(sel) { return document.querySelector(sel); }
   function setText(el, text) { if (el) el.textContent = text; }
-  function show(el) { if (el) el.style.display = ''; }
-  function hide(el) { if (el) el.style.display = 'none'; }
+  function show(el) { if (el) el) el.style.display = ''; }
+  function hide(el) { if (el) el) el.style.display = 'none'; }
   function qsParam(name) { return new URLSearchParams(location.search).get(name); }
   function pathLast() { const parts = location.pathname.split('/').filter(Boolean); return parts[parts.length - 1] || ''; }
+
+  // Safe wrappers for show/hide to avoid errors if element missing
+  function safeShow(id) { const el = document.getElementById(id); if (el) el.style.display = ''; }
+  function safeHide(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
 
   async function api(path, opts = {}) {
     const isForm = opts.body instanceof FormData;
@@ -24,21 +30,16 @@
     return res;
   }
 
-  // Ban overlay and device-ban helpers
+  // Device ban helpers
   function getBanReason() {
     try { return localStorage.getItem('reasonforbanned') || localStorage.getItem('ressonforbanned') || ''; } catch { return ''; }
   }
   function isDeviceBanned() {
     try { return localStorage.getItem('userbanned') === 'true'; } catch { return false; }
   }
-  function ensureBanOverlay() {
-    const overlay = $('#ban-overlay');
-    if (!overlay) return null;
-    return overlay;
-  }
   function ensureUnbanButton() {
-    const btn = $('#unban-btn');
-    if (!btn) return null;
+    const btn = document.getElementById('unban-btn');
+    if (!btn) return;
     btn.addEventListener('click', function () {
       const pin = prompt('Admin PIN to unban this device:');
       if (pin === '2529' || pin === '2520') {
@@ -53,89 +54,195 @@
         alert('Incorrect PIN.');
       }
     }, { once: true });
-    return btn;
   }
-  function showBan(reason) {
-    const overlay = ensureBanOverlay();
+  function showBanOverlay(reason) {
+    const overlay = document.getElementById('ban-overlay');
     if (!overlay) return;
-    overlay.querySelector('.reason').textContent = 'Reason: ' + (reason || 'Violation of rules');
+    const p = overlay.querySelector('.reason');
+    if (p) p.textContent = 'Reason: ' + (reason || 'Violation of rules');
     overlay.classList.add('visible');
-    ensureUnbanButton();
+  }
+  function initBanState(serverBanned, serverBanReason) {
+    if (serverBanned) {
+      try {
+        localStorage.setItem('userbanned', 'true');
+        localStorage.setItem('reasonforbanned', serverBanReason || 'Violation of rules');
+        localStorage.setItem('ressonforbanned', serverBanReason || 'Violation of rules');
+      } catch {}
+    }
+    if (isDeviceBanned()) {
+      showBanOverlay(getBanReason());
+    }
   }
 
-  // Nav/user info setup + ban sync
+  // Session / nav
   async function initSession() {
     try {
       const me = await api('/api/me');
-      setText($('#branding'), me.branding || 'Made by Firewall Freedom');
+      setText(document.getElementById('branding') || document.querySelector('#branding'), me.branding || 'Made by Firewall Freedom');
       const user = me.user;
 
-      if (me.serverBanned) {
-        try {
-          localStorage.setItem('userbanned', 'true');
-          localStorage.setItem('reasonforbanned', me.serverBanReason || 'Violation of rules');
-          localStorage.setItem('ressonforbanned', me.serverBanReason || 'Violation of rules');
-        } catch {}
-      }
+      initBanState(me.serverBanned, me.serverBanReason);
 
-      if (isDeviceBanned()) {
-        showBan(getBanReason());
-      }
+      // Update nav if present
+      const navIdentity = document.getElementById('nav-user-identity');
+      const navPoints = document.getElementById('nav-user-points');
+      const navUserInfo = document.getElementById('nav-user-info');
+      const navLoginLinks = document.getElementById('nav-login-links');
+      const navLogout = document.getElementById('nav-logout');
+      const uploadLink = document.getElementById('upload-link');
+      const settingsLink = document.getElementById('settings-link');
+      const adminLink = document.getElementById('admin-link');
 
-      if ($('#nav-user-info') || $('#logout-btn') || $('#admin-link') || $('#upload-link') || $('#nav-login-links') || $('#settings-link')) {
-        if (user) {
-          const identity = user.username && user.username.trim() ? user.username : user.email;
-          setText($('#nav-user-identity'), identity);
-          setText($('#nav-user-points'), String(user.points || 0));
-          show($('#nav-user-info'));
-          hide($('#nav-login-links'));
-          show($('#nav-logout'));
-          show($('#upload-link'));
-          show($('#settings-link'));
-          if (user.is_admin) show($('#admin-link'));
-        } else {
-          hide($('#nav-user-info'));
-          hide($('#admin-link'));
-          hide($('#upload-link'));
-          hide($('#settings-link'));
-          show($('#nav-login-links'));
-          hide($('#nav-logout'));
+      if (user) {
+        if (navIdentity) navIdentity.textContent = (user.username && user.username.trim()) ? user.username : user.email;
+        if (navPoints) navPoints.textContent = String(user.points || 0);
+        if (navUserInfo) navUserInfo.style.display = '';
+        if (navLoginLinks) navLoginLinks.style.display = 'none';
+        if (navLogout) navLogout.style.display = '';
+        if (uploadLink) uploadLink.style.display = '';
+        if (settingsLink) settingsLink.style.display = '';
+        if (user.is_admin && adminLink) adminLink.style.display = '';
+        // logout hook
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+          logoutBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
+            location.href = '/';
+          });
         }
-
-        $('#logout-btn')?.addEventListener('click', async (e) => {
-          e.preventDefault();
-          await api('/api/auth/logout', { method: 'POST', body: JSON.stringify({}) });
-          location.href = '/';
-        });
+      } else {
+        if (navUserInfo) navUserInfo.style.display = 'none';
+        if (navLoginLinks) navLoginLinks.style.display = '';
+        if (navLogout) navLogout.style.display = 'none';
+        if (uploadLink) uploadLink.style.display = 'none';
+        if (settingsLink) settingsLink.style.display = 'none';
+        if (adminLink) adminLink.style.display = 'none';
       }
 
       return user;
     } catch (e) {
-      console.error(e);
+      console.error('initSession error', e);
       return null;
     }
   }
 
-  // Page-specific initializers
+  // --- Document viewer: Fetch PDF as ArrayBuffer and display via blob URL ---
+  // This solves "Failed to load PDF document" by ensuring the iframe has a blob URL that the browser can render.
+  let currentBlobUrl = null;
+
+  async function fetchPdfBlobUrl(docId) {
+    // fetch binary with credentials (session cookie)
+    const res = await fetch(`/api/docs/${docId}/view`, { credentials: 'same-origin' });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(txt || 'Failed to fetch PDF');
+    }
+    const arrayBuffer = await res.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    return url;
+  }
+
+  // Clear previous blob URLs to avoid memory leaks
+  function revokeCurrentBlob() {
+    if (currentBlobUrl) {
+      try { URL.revokeObjectURL(currentBlobUrl); } catch (e) {}
+      currentBlobUrl = null;
+    }
+  }
+
+  // Initialize document page: load metadata and create blob URL for iframe
+  async function initDocument() {
+    // Ensure user is signed in (me) — if not, redirect to login
+    const me = await initSession();
+    if (!me) {
+      location.href = '/login?next=' + encodeURIComponent(location.pathname);
+      return;
+    }
+
+    const id = pathLast();
+    const metaEl = document.getElementById('doc-meta');
+    const descEl = document.getElementById('doc-desc');
+    const badgesEl = document.getElementById('doc-badges');
+    const iframe = document.getElementById('doc-iframe');
+    const downloadLink = document.getElementById('download-link');
+    const errorEl = document.getElementById('doc-error');
+
+    try {
+      const data = await api(`/api/docs/${id}`);
+      const doc = data.doc;
+
+      // Populate metadata
+      if (metaEl) metaEl.textContent = `School: ${doc.school || '—'} | Grade: ${doc.grade_level || '—'} | Course: ${doc.course || '—'} | Tags: ${doc.tags || '—'} | Uploaded: ${new Date(doc.created_at).toLocaleString()}`;
+      if (descEl) descEl.textContent = doc.description || '';
+
+      // Badges
+      if (badgesEl) {
+        badgesEl.innerHTML = '';
+        if (doc.uploader_status === 'banned') {
+          const p1 = document.createElement('p'); p1.className = 'badge badge-warn'; p1.textContent = 'Uploader is banned'; badgesEl.appendChild(p1);
+          if (doc.uploader_banned_at && new Date(doc.created_at) > new Date(doc.uploader_banned_at)) {
+            const p2 = document.createElement('p'); p2.className = 'badge badge-warn'; p2.textContent = 'This was uploaded while the uploader was banned'; badgesEl.appendChild(p2);
+          }
+        }
+        if (doc.status !== 'approved') {
+          const p = document.createElement('p'); p.className = 'badge badge-info'; p.textContent = `Status: ${doc.status}`; badgesEl.appendChild(p);
+        }
+      }
+
+      // Revoke any previous blob and fetch a new blob URL
+      revokeCurrentBlob();
+      currentBlobUrl = await fetchPdfBlobUrl(id);
+      // Set iframe src to blob URL
+      if (iframe) iframe.src = currentBlobUrl;
+
+      // Configure download link to use same blob if possible (force download)
+      if (downloadLink) {
+        downloadLink.href = currentBlobUrl;
+        const filename = (doc.title || 'document').replace(/[^a-zA-Z0-9._-]+/g, '-') + '.pdf';
+        downloadLink.setAttribute('download', filename);
+      }
+
+      // Revoke blob when the user navigates away or unloads
+      window.addEventListener('beforeunload', revokeCurrentBlob);
+      window.addEventListener('pagehide', revokeCurrentBlob);
+
+    } catch (err) {
+      console.error('initDocument error', err);
+      if (errorEl) {
+        errorEl.style.display = '';
+        errorEl.textContent = err.message || 'Unable to load document';
+      } else {
+        alert(err.message || 'Unable to load document');
+      }
+    }
+  }
+
+  // --- Other page initializers (home, login, register, upload, admin, settings) ---
   async function initHome() {
-    const qInput = $('#q');
-    const schoolInput = $('#school');
+    const qInput = document.getElementById('q');
+    const schoolInput = document.getElementById('school');
     const params = new URLSearchParams(location.search);
     if (qInput) qInput.value = params.get('q') || '';
     if (schoolInput) schoolInput.value = params.get('school') || '';
 
     async function runSearch() {
-      const q = qInput?.value?.trim() || '';
-      const school = schoolInput?.value?.trim() || '';
+      const q = (qInput && qInput.value) ? qInput.value.trim() : '';
+      const school = (schoolInput && schoolInput.value) ? schoolInput.value.trim() : '';
       const url = `/api/docs/search?q=${encodeURIComponent(q)}&school=${encodeURIComponent(school)}`;
       const data = await api(url);
-      const list = $('#docs-list');
+      const list = document.getElementById('docs-list');
+      if (!list) return;
       list.innerHTML = '';
       if (!data.docs || data.docs.length === 0) {
-        show($('#no-docs'));
+        const noDocs = document.getElementById('no-docs');
+        if (noDocs) noDocs.style.display = '';
         return;
       }
-      hide($('#no-docs'));
+      const noDocs = document.getElementById('no-docs');
+      if (noDocs) noDocs.style.display = 'none';
       data.docs.forEach(doc => {
         const li = document.createElement('li');
         li.className = 'doc-item';
@@ -154,36 +261,44 @@
       });
     }
 
-    $('#search-form')?.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const q = qInput?.value?.trim() || '';
-      const school = schoolInput?.value?.trim() || '';
-      const newUrl = `/?q=${encodeURIComponent(q)}&school=${encodeURIComponent(school)}`;
-      if (location.href !== newUrl) history.replaceState({}, '', newUrl);
-      runSearch().catch(console.error);
-    });
-
-    // Initial data — leaderboard
-    api('/api/leaderboard').then(data => {
-      const ol = $('#leaderboard');
-      ol.innerHTML = '';
-      (data.leaders || []).forEach(l => {
-        // Show username if present, otherwise fallback to email.
-        const name = (l.username && l.username.trim()) ? l.username : l.email;
-        // Render as a single text entry: "Name | N pts"
-        const li = document.createElement('li');
-        li.textContent = `${name} | ${l.points} pts`;
-        ol.appendChild(li);
+    const searchForm = document.getElementById('search-form');
+    if (searchForm) {
+      searchForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const q = (qInput && qInput.value) ? qInput.value.trim() : '';
+        const school = (schoolInput && schoolInput.value) ? schoolInput.value.trim() : '';
+        const newUrl = `/?q=${encodeURIComponent(q)}&school=${encodeURIComponent(school)}`;
+        if (location.href !== newUrl) history.replaceState({}, '', newUrl);
+        runSearch().catch(console.error);
       });
-    }).catch(console.error);
+    }
+
+    // Leaderboard
+    try {
+      const lb = await api('/api/leaderboard');
+      const ol = document.getElementById('leaderboard');
+      if (ol) {
+        ol.innerHTML = '';
+        (lb.leaders || []).forEach(l => {
+          const name = (l.username && l.username.trim()) ? l.username : l.email;
+          const li = document.createElement('li');
+          li.textContent = `${name} | ${l.points} pts`;
+          ol.appendChild(li);
+        });
+      }
+    } catch (e) {
+      console.error('leaderboard load error', e);
+    }
 
     runSearch().catch(console.error);
   }
 
   async function initLogin() {
-    $('#login-form')?.addEventListener('submit', async (e) => {
+    const form = document.getElementById('login-form');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
+      const fd = new FormData(form);
       const payload = {
         email: fd.get('email'),
         password: fd.get('password'),
@@ -194,18 +309,18 @@
         await api('/api/auth/login', { method: 'POST', body: JSON.stringify(payload) });
         location.href = '/';
       } catch (err) {
-        const msg = err.message || 'Login failed';
-        const el = $('#error');
-        setText(el, msg);
-        show(el);
+        const el = document.getElementById('error');
+        if (el) { el.style.display = ''; el.textContent = err.message || 'Login failed'; }
       }
     });
   }
 
   async function initRegister() {
-    $('#register-form')?.addEventListener('submit', async (e) => {
+    const form = document.getElementById('register-form');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
+      const fd = new FormData(form);
       const payload = {
         email: fd.get('email'),
         username: fd.get('username'),
@@ -218,9 +333,8 @@
         await api('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) });
         location.href = '/';
       } catch (err) {
-        const el = $('#error');
-        setText(el, err.message || 'Registration failed');
-        show(el);
+        const el = document.getElementById('error');
+        if (el) { el.style.display = ''; el.textContent = err.message || 'Registration failed'; }
       }
     });
   }
@@ -232,43 +346,31 @@
       return;
     }
     if (user.status === 'banned') {
-      const el = $('#error');
-      setText(el, 'You are banned and cannot upload.');
-      show(el);
+      const el = document.getElementById('error');
+      if (el) { el.style.display = ''; el.textContent = 'You are banned and cannot upload.'; }
       return;
     }
-
-    $('#upload-form')?.addEventListener('submit', async (e) => {
+    const form = document.getElementById('upload-form');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
-      const files = $('#pdfs').files;
+      const fd = new FormData(form);
+      const files = document.getElementById('pdfs')?.files;
       try {
         if (!files || files.length === 0) throw new Error('No files selected');
-        if (files.length === 1) {
-          const res = await fetch('/api/docs/upload', { method: 'POST', body: fd });
-          if (!res.ok) {
-            const j = await res.json().catch(() => ({}));
-            throw new Error(j.error || 'Upload failed');
-          }
-          const j = await res.json();
-          location.href = `/docs/${j.id}`;
-        } else {
-          const res = await fetch('/api/docs/uploads', { method: 'POST', body: fd });
-          if (!res.ok) {
-            const j = await res.json().catch(() => ({}));
-            throw new Error(j.error || 'Batch upload failed');
-          }
-          const j = await res.json();
-          if (j.ids && j.ids.length > 0) {
-            location.href = `/docs/${j.ids[0]}`;
-          } else {
-            location.href = '/';
-          }
+        const endpoint = (files.length === 1) ? '/api/docs/upload' : '/api/docs/uploads';
+        const res = await fetch(endpoint, { method: 'POST', body: fd });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || 'Upload failed');
         }
+        const j = await res.json();
+        if (j.id) location.href = `/docs/${j.id}`;
+        else if (j.ids && j.ids.length) location.href = `/docs/${j.ids[0]}`;
+        else location.href = '/';
       } catch (err) {
-        const el = $('#error');
-        setText(el, err.message || 'Upload failed');
-        show(el);
+        const el = document.getElementById('error');
+        if (el) { el.style.display = ''; el.textContent = err.message || 'Upload failed'; }
       }
     });
   }
@@ -276,109 +378,62 @@
   async function initAdmin() {
     const user = await initSession();
     if (!user || !user.is_admin) {
-      show($('#admin-gate'));
+      const gate = document.getElementById('admin-gate');
+      if (gate) gate.style.display = '';
       return;
     }
     try {
       const data = await api('/api/admin/pending');
       const doc = data.doc;
       if (!doc) {
-        show($('#no-pending'));
+        const np = document.getElementById('no-pending'); if (np) np.style.display = '';
         return;
       }
-      show($('#verify-card'));
-      setText($('#doc-title'), doc.title);
-      setText($('#doc-meta-1'), `Uploader: ${doc.uploader_username || doc.uploader_email || 'Unknown'} ${doc.uploader_status === 'banned' ? '(banned)' : ''}`);
-      setText($('#doc-meta-2'), `School: ${doc.school || '—'} | Grade: ${doc.grade_level || '—'} | Course: ${doc.course || '—'}`);
-      setText($('#doc-desc'), doc.description || '');
-      $('#doc-iframe').src = `/api/docs/${doc.id}/view`;
-
-      $('#approve-btn').addEventListener('click', async () => {
+      const card = document.getElementById('verify-card'); if (card) card.style.display = '';
+      document.getElementById('doc-title').textContent = doc.title;
+      document.getElementById('doc-meta-1').textContent = `Uploader: ${doc.uploader_username || doc.uploader_email || 'Unknown'} ${doc.uploader_status === 'banned' ? '(banned)' : ''}`;
+      document.getElementById('doc-meta-2').textContent = `School: ${doc.school || '—'} | Grade: ${doc.grade_level || '—'} | Course: ${doc.course || '—'}`;
+      document.getElementById('doc-desc').textContent = doc.description || '';
+      document.getElementById('doc-iframe').src = `/api/docs/${doc.id}/view`; // admin preview can be direct
+      document.getElementById('approve-btn').addEventListener('click', async () => {
         await api('/api/admin/approve', { method: 'POST', body: JSON.stringify({ doc_id: doc.id, uploader_id: doc.uploaded_by }) });
         location.reload();
       });
-
-      $('#deny-btn').addEventListener('click', async () => {
+      document.getElementById('deny-btn').addEventListener('click', async () => {
         await api('/api/admin/deny', { method: 'POST', body: JSON.stringify({ doc_id: doc.id }) });
         location.reload();
       });
-
-      $('#ban-btn').addEventListener('click', async () => {
-        const reason = $('#ban-reason').value || 'Violation of rules';
+      document.getElementById('ban-btn').addEventListener('click', async () => {
+        const reason = document.getElementById('ban-reason').value || 'Violation of rules';
         await api('/api/admin/block-user', { method: 'POST', body: JSON.stringify({ uploader_id: doc.uploaded_by, reason }) });
         location.reload();
       });
-
     } catch (e) {
-      const el = $('#admin-error');
-      setText(el, e.message || 'Error loading pending doc');
-      show(el);
-    }
-  }
-
-  async function initDocument() {
-    const user = await initSession();
-    if (!user) {
-      location.href = '/login?next=' + encodeURIComponent(location.pathname);
-      return;
-    }
-    const id = pathLast();
-    const metaEl = $('#doc-meta');
-    const descEl = $('#doc-desc');
-    const badgesEl = $('#doc-badges');
-    const iframe = $('#doc-iframe');
-    const download = $('#download-link');
-    const errorEl = $('#doc-error');
-
-    try {
-      const data = await api(`/api/docs/${id}`);
-      const doc = data.doc;
-      setText($('#doc-title'), doc.title);
-      setText(metaEl, `School: ${doc.school || '—'} | Grade: ${doc.grade_level || '—'} | Course: ${doc.course || '—'} | Tags: ${doc.tags || '—'} | Uploaded: ${new Date(doc.created_at).toLocaleString()}`);
-      setText(descEl, doc.description || '');
-      badgesEl.innerHTML = '';
-      if (doc.uploader_status === 'banned') {
-        const p1 = document.createElement('p'); p1.className = 'badge badge-warn'; p1.textContent = 'Uploader is banned'; badgesEl.appendChild(p1);
-        if (doc.uploader_banned_at && new Date(doc.created_at) > new Date(doc.uploader_banned_at)) {
-          const p2 = document.createElement('p'); p2.className = 'badge badge-warn'; p2.textContent = 'This was uploaded while the uploader was banned'; badgesEl.appendChild(p2);
-        }
-      }
-      iframe.src = `/api/docs/${id}/view`;
-      download.href = `/api/docs/${id}/download`;
-      download.setAttribute('download', doc.title.replace(/[^a-zA-Z0-9._-]+/g, '-') + '.pdf');
-
-      if (doc.status !== 'approved') {
-        const p = document.createElement('p'); p.className = 'badge badge-info'; p.textContent = `Status: ${doc.status}`;
-        badgesEl.appendChild(p);
-      }
-    } catch (err) {
-      setText(errorEl, err.message || 'Unable to load document');
-      show(errorEl);
+      console.error('initAdmin error', e);
+      const el = document.getElementById('admin-error'); if (el) { el.style.display = ''; el.textContent = e.message || 'Error loading pending doc'; }
     }
   }
 
   async function initSettings() {
     const user = await initSession();
     if (!user) {
-      show($('#settings-gate'));
-      hide($('#settings-form-wrap'));
+      document.getElementById('settings-gate').style.display = '';
+      document.getElementById('settings-form-wrap').style.display = 'none';
       return;
     }
-    $('#settings-email').value = user.email || '';
-    $('#settings-username').value = (user.username && user.username.trim()) ? user.username : user.email;
-
-    $('#save-username-btn')?.addEventListener('click', async () => {
-      const newUsername = $('#settings-username').value.trim();
+    document.getElementById('settings-email').value = user.email || '';
+    document.getElementById('settings-username').value = (user.username && user.username.trim()) ? user.username : user.email;
+    document.getElementById('save-username-btn')?.addEventListener('click', async () => {
+      const newUsername = document.getElementById('settings-username').value.trim();
       try {
         await api('/api/account/username', { method: 'PATCH', body: JSON.stringify({ username: newUsername }) });
-        setText($('#settings-msg'), 'Saved.');
+        document.getElementById('settings-msg').textContent = 'Saved.';
         setTimeout(() => location.reload(), 600);
       } catch (e) {
-        setText($('#settings-msg'), e.message || 'Could not save');
+        document.getElementById('settings-msg').textContent = e.message || 'Could not save';
       }
     });
-
-    $('#delete-account-btn')?.addEventListener('click', async () => {
+    document.getElementById('delete-account-btn')?.addEventListener('click', async () => {
       const confirmText = prompt('Type DELETE to permanently delete your account and move your PDFs to banned-pdfs.');
       if (confirmText !== 'DELETE') return;
       try {
@@ -398,22 +453,13 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     await initCommon();
-
     const page = document.body.getAttribute('data-page');
-    if (page === 'home') {
-      initHome();
-    } else if (page === 'login') {
-      initLogin();
-    } else if (page === 'register') {
-      initRegister();
-    } else if (page === 'upload') {
-      initUpload();
-    } else if (page === 'admin') {
-      initAdmin();
-    } else if (page === 'document') {
-      initDocument();
-    } else if (page === 'settings') {
-      initSettings();
-    }
+    if (page === 'home') initHome();
+    else if (page === 'login') initLogin();
+    else if (page === 'register') initRegister();
+    else if (page === 'upload') initUpload();
+    else if (page === 'admin') initAdmin();
+    else if (page === 'document') initDocument();
+    else if (page === 'settings') initSettings();
   });
 })();
