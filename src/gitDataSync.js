@@ -1,18 +1,3 @@
-/**
- * gitDataSync.js
- *
- * Provides:
- * - initDataSync(): initialize local DB from remote repo (or create remote DB if absent)
- * - markDataDirty(): schedule a batched push of the local DB to the repo
- * - syncNow(force): immediate sync
- *
- * This file must export functions with these exact names (initDataSync, markDataDirty, syncNow)
- * so callers can require and call them. The startup error "initDataSync is not a function"
- * happens when the module does not export that function (or when require() returns something else).
- *
- * This version uses the shared GitHub client (githubClient.js) and is defensive about errors.
- */
-
 const fs = require('fs');
 const path = require('path');
 const { octokit, GH_OWNER, GH_REPO, GH_BRANCH, configError } = require('./githubClient');
@@ -127,25 +112,26 @@ function markDataDirty() {
 
 /**
  * Sync local DB to remote now. If force=true, push even if not dirty.
+ * This function is defensive: if GitHub returns a 422 complaining "sha wasn't supplied"
+ * we re-fetch the remote sha and retry with that sha.
  */
 async function syncNow(force = false) {
   if (!dirty && !force) return;
 
-  // Read local file
   if (!fs.existsSync(LOCAL_DB_PATH)) {
-    // Nothing to push
     console.warn('Local DB does not exist; skipping sync.');
     return;
   }
+
   const buf = fs.readFileSync(LOCAL_DB_PATH);
   const contentBase64 = buf.toString('base64');
 
-  // Refresh lastKnownSha if missing (helps handle new remote state)
+  // Ensure we have latest sha if not set
   if (!lastKnownSha && !force) {
     lastKnownSha = await getRemoteSha();
   }
 
-  const params = {
+  let params = {
     owner: GH_OWNER,
     repo: GH_REPO,
     path: REMOTE_DB_PATH,
@@ -160,12 +146,37 @@ async function syncNow(force = false) {
     lastKnownSha = data.content.sha || null;
     dirty = false;
     console.log('Synced data/app.db to remote.');
+    return;
   } catch (e) {
+    // If GitHub complains "sha wasn't supplied", it means a file exists but our params lacked sha.
+    // Re-fetch remote sha and retry once.
+    if (e.status === 422 && e.message && e.message.includes('"sha"')) {
+      try {
+        const remoteSha = await getRemoteSha();
+        if (remoteSha) {
+          params.sha = remoteSha;
+          const { data } = await octokit.repos.createOrUpdateFileContents(params);
+          lastKnownSha = data.content.sha || null;
+          dirty = false;
+          console.log('Synced data/app.db to remote (retry with sha).');
+          return;
+        }
+        // remoteSha not present despite 422 - fall through to error handling below
+      } catch (retryErr) {
+        // If retry failed, include both errors in log and throw the original for clarity
+        console.error('Retry to sync with fetched sha failed:', retryErr.message);
+        throw e;
+      }
+    }
+    // For other errors or if retry not applicable, transform 404/422 into config guidance
     if (e.status === 404) {
-      // Provide helpful guidance instead of raw 404
       throw configError(
         'Remote write failed with 404 (Not Found). Ensure the repository and branch exist and the token has contents:write.'
       );
+    }
+    if (e.status === 422) {
+      // Provide more precise guidance about the 422
+      throw new Error(`Remote write failed with 422 (Invalid request): ${e.message}`);
     }
     throw e;
   }
