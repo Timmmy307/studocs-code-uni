@@ -1,3 +1,6 @@
+// public/main.js
+// Full file — updates leaderboard rendering to show "Username | N pts"
+
 (function () {
   // Utilities
   function $(sel) { return document.querySelector(sel); }
@@ -160,13 +163,16 @@
       runSearch().catch(console.error);
     });
 
+    // Initial data — leaderboard
     api('/api/leaderboard').then(data => {
       const ol = $('#leaderboard');
       ol.innerHTML = '';
       (data.leaders || []).forEach(l => {
-        const name = l.username && l.username.trim() ? l.username : l.email;
+        // Show username if present, otherwise fallback to email.
+        const name = (l.username && l.username.trim()) ? l.username : l.email;
+        // Render as a single text entry: "Name | N pts"
         const li = document.createElement('li');
-        li.innerHTML = `<span class="name">${name}</span><span class="points">${l.points} pts</span>`;
+        li.textContent = `${name} | ${l.points} pts`;
         ol.appendChild(li);
       });
     }).catch(console.error);
@@ -239,7 +245,6 @@
       try {
         if (!files || files.length === 0) throw new Error('No files selected');
         if (files.length === 1) {
-          // Single upload endpoint
           const res = await fetch('/api/docs/upload', { method: 'POST', body: fd });
           if (!res.ok) {
             const j = await res.json().catch(() => ({}));
@@ -248,14 +253,12 @@
           const j = await res.json();
           location.href = `/docs/${j.id}`;
         } else {
-          // Batch upload endpoint
           const res = await fetch('/api/docs/uploads', { method: 'POST', body: fd });
           if (!res.ok) {
             const j = await res.json().catch(() => ({}));
             throw new Error(j.error || 'Batch upload failed');
           }
           const j = await res.json();
-          // Go to first doc or home
           if (j.ids && j.ids.length > 0) {
             location.href = `/docs/${j.ids[0]}`;
           } else {
